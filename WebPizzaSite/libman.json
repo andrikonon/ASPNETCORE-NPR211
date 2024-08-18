@@ -5,6 +5,14 @@
     {
       "library": "bootstrap@5.3.3",
       "destination": ".\\wwwroot\\lib\\bootstrap\\"
+    },
+    {
+      "library": "bootstrap-icons@1.11.3",
+      "destination": "wwwroot\\lib\\bootstrap-icons"
+    },
+    {
+      "library": "axios@1.7.2",
+      "destination": "wwwroot\\lib\\axios"
     }
   ]
 }
