@@ -78,10 +78,14 @@ public class MainController : Controller
         }
         
         var cat = _context.Categories.SingleOrDefault(m => m.Id == id);
-        
         if (cat == null)
         {
             return NotFound();
+        }
+        var path = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", cat.Image);
+        if (System.IO.File.Exists(path))
+        {
+            System.IO.File.Delete(path);
         }
         _context.Categories.Remove(cat);
         _context.SaveChanges();
