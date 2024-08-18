@@ -14,10 +14,13 @@ public class MainController : Controller
     private readonly IWebHostEnvironment _webHostEnvironment;
     private readonly IMapper _mapper;
 
-    public MainController(PizzaDbContext context, IMapper mapper)
+    public MainController(PizzaDbContext context,
+        IMapper mapper,
+        IWebHostEnvironment webHostEnvironment)
     {
         _context = context;
         _mapper = mapper;
+        _webHostEnvironment = webHostEnvironment;
     }
 
     public IActionResult Index()
@@ -47,8 +50,11 @@ public class MainController : Controller
                 var extension = Path.GetExtension(model.Image.FileName);
                 string filename = $"{Guid.NewGuid()}{extension}";
                 var path = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", filename);
-                
-                Directory.CreateDirectory(path);
+                var dir = Path.GetDirectoryName(path);
+                if (!Directory.Exists(dir) && dir != null)
+                {
+                    Directory.CreateDirectory(dir);
+                }
                 using (var stream = new FileStream(path, FileMode.Create))
                 { 
                     await model.Image.CopyToAsync(stream);
