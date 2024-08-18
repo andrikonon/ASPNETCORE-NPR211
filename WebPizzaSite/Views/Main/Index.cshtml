@@ -63,5 +63,10 @@
             });
         }
         onDeleteEvent();
+
+        document.getElementById("yes-button").addEventListener("click", async () => {
+            await axios.delete(`/main/delete/${removeId}`)
+            window.location.reload();
+        });
     </script>
 }
