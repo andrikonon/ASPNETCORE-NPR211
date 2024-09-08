@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using WebPizzaSite.Constants;
 using WebPizzaSite.Data;
 using WebPizzaSite.Data.Entities;
 using WebPizzaSite.Data.Entities.Identity;
@@ -30,6 +31,17 @@ builder.Services.AddIdentity<UserEntity, RoleEntity>(options =>
     })
     .AddEntityFrameworkStores<PizzaDbContext>()
     .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    // Cookie settings
+    options.Cookie.HttpOnly = true;
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+    options.LoginPath = "/Account/Login";
+    options.AccessDeniedPath = "/Account/AccessDenied";
+    options.SlidingExpiration = true;
+});
+
 
 builder.Services.AddAutoMapper(typeof(Program));
 
@@ -71,6 +83,49 @@ using (var serviceScope = app.Services.GetRequiredService<IServiceScopeFactory>(
             context.SaveChanges();
         }
     }
+
+    if (!context.Products.Any())
+    {
+        var admin = new RoleEntity
+        {
+            Name = Roles.Admin,
+        };
+        var result = roleManager.CreateAsync(admin).Result;
+        if (!result.Succeeded)
+        {
+            Console.WriteLine($"----- Помилка створення ролі {Roles.Admin} -----");
+        }
+        result = roleManager.CreateAsync(new RoleEntity{Name=Roles.User}).Result;
+        if (!result.Succeeded)
+        {
+            Console.WriteLine($"----- Помилка створення ролі {Roles.User} -----");
+        }
+    }
+
+    if (!context.Users.Any())
+    {
+        var user = new UserEntity
+        {
+            Email = "admin@gmail.com",
+            UserName = "admin@gmail.com",
+            LastName = "Шолом",
+            FirstName = "Вулкан",
+            Picture = "admin.jpg",
+        };
+        var result = userManager.CreateAsync(user, "123456").Result;
+        if (result.Succeeded)
+        {
+            result = userManager.AddToRoleAsync(user, Roles.Admin).Result;
+            if (!result.Succeeded)
+            {
+                Console.WriteLine($"----- Не вдалося надати роль {Roles.Admin} користувачу {user.Email} -----");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"------- Не вдалося створити користувача {user.Email} -------");
+        }
+    }
 }
 
 using (var serviceScope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope())
@@ -92,6 +147,8 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseCookiePolicy();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
