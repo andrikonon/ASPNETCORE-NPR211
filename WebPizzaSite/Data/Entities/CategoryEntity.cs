@@ -14,5 +14,6 @@ public class CategoryEntity
     public string Image { get; set; } = null!;
     [StringLength(4000)]
     public string Description { get; set; } = string.Empty;
+    public virtual ICollection<ProductEntity>? Products { get; set; }
     
 }
