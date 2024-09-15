@@ -22,12 +22,36 @@ public class ProductController : Controller
         _webHostEnvironment = webHostEnvironment;
     }
 
-    public IActionResult Index()
+    public IActionResult Index(ProductSearchViewModel search)
     {
-        var list = _context.Products
+        
+        var query = _context.Products.AsQueryable();
+
+        int pageSize = 8;
+        int page = search.Page - 1 ?? 0;
+
+        var count = query.Count();
+        
+        query = query.OrderBy(x => x.Name).Skip(page * pageSize).Take(pageSize);
+        
+        var list = query
             .ProjectTo<ProductItemViewModel>(_mapper.ConfigurationProvider)
             .ToList();
-        return View(list);
+        ProductsHomeViewModel model = new ProductsHomeViewModel
+        {
+            Data = list,
+            Count = count,
+            Pagination = new Models.Helpers.PaginationViewModel
+            {
+                PageSize = pageSize,
+                TotalItems = count,
+            },
+            Search = new ProductSearchViewModel
+            {
+                Page = search.Page ?? 0,
+            },
+        };
+        return View(model);
     }
 
     [HttpGet]
