@@ -87,7 +87,7 @@ using (var serviceScope = app.Services.GetRequiredService<IServiceScopeFactory>(
         var catCount = context.Categories.Count();
         if (catCount != 0)
         {
-            var prodCount = faker.Random.Int(0, 100);
+            var prodCount = faker.Random.Int(50, 100);
             for (int i = 0; i < prodCount; i++)
             {
                 var catIds = context.Categories.Select(x => x.Id).ToList();
