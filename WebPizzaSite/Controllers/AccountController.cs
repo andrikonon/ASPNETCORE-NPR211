@@ -43,4 +43,12 @@ public class AccountController : Controller
         ModelState.AddModelError("", "Дані вказано неправильно!");
         return View(model);
     }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout()
+    {
+        await _signInManager.SignOutAsync();
+        return Redirect("/");
+    }
 }
