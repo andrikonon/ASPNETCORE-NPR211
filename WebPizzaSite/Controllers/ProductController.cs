@@ -2,110 +2,53 @@ using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using WebPizzaSite.Data;
 using WebPizzaSite.Data.Entities;
 using WebPizzaSite.Models.Product;
+using IConfigurationProvider = SixLabors.ImageSharp.Advanced.IConfigurationProvider;
 
 namespace WebPizzaSite.Controllers;
 
+[Route("api/[controller]")]
+[ApiController]
 public class ProductController : Controller
 {
-    private readonly PizzaDbContext _context;
-    private readonly IWebHostEnvironment _webHostEnvironment;
-    private readonly IMapper _mapper;
+    public readonly PizzaDbContext _context;
+    public IConfiguration _configuration;
+    public readonly IMapper _mapper;
 
-    public ProductController(PizzaDbContext context, IMapper mapper, IWebHostEnvironment webHostEnvironment)
+    public ProductController(PizzaDbContext context, IConfiguration configuration, IMapper mapper)
     {
         _context = context;
+        _configuration = configuration;
         _mapper = mapper;
-        _webHostEnvironment = webHostEnvironment;
     }
-
-    public IActionResult Index(ProductSearchViewModel search)
-    {
-        
-        var query = _context.Products.AsQueryable();
-
-        int pageSize = 8;
-        int page = search.Page - 1 ?? 0;
-
-        var count = query.Count();
-        
-        query = query.OrderBy(x => x.Name).Skip(page * pageSize).Take(pageSize);
-        
-        var list = query
-            .ProjectTo<ProductItemViewModel>(_mapper.ConfigurationProvider)
-            .ToList();
-        ProductsHomeViewModel model = new ProductsHomeViewModel
-        {
-            Data = list,
-            Count = count,
-            Pagination = new Models.Helpers.PaginationViewModel
-            {
-                PageSize = pageSize,
-                TotalItems = count,
-            },
-            Search = new ProductSearchViewModel
-            {
-                Page = search.Page ?? 0,
-            },
-        };
-        return View(model);
-    }
-
     [HttpGet]
-    public IActionResult Create()
+    public async Task<IActionResult> GetList()
     {
-        var catlist = _context.Categories
-            .Select(x => new { Value = x.Id, Text = x.Name })
-            .ToList();
-        ProductCreateViewModel model = new();
-        model.CategoryList = new SelectList(catlist, "Value", "Text");
-        
-        return View(model);
+        var list = await _context.Products
+            .ProjectTo<ProductItemViewModel>(_mapper.ConfigurationProvider)
+            .ToListAsync();
+        return Ok(list);
     }
-
-    [HttpPost]
-    public async Task<IActionResult> Create(ProductCreateViewModel model)
-    {
-        if (!ModelState.IsValid)
-            return View(model);
-
-        var prod = new ProductEntity
-        {
-            Name = model.Name,
-            Price = model.Price,
-            CategoryId = model.CategoryId,
-        };
-        
-        await _context.Products.AddAsync(prod);
-        await _context.SaveChangesAsync();
-        if (model.Photos != null)
-        {
-            int i = 0;
-
-            foreach (var img in model.Photos)
-            {
-                string ext = System.IO.Path.GetExtension(img.FileName);
-                string fileName = Guid.NewGuid() + ext;
-                var path = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", fileName);
-                using (var stream = new FileStream(path, FileMode.Create))
-                {
-                    await img.CopyToAsync(stream);
-                }
-
-                var imgEntity = new ProductImageEntity
-                {
-                    Name = fileName,
-                    Priority = i++,
-                    Product = prod,
-                };
-                _context.ProductImages.Add(imgEntity);
-                _context.SaveChanges();
-            }
-        }
-
-        return RedirectToAction("Index");
-    }
+    //[HttpPost]
+    //public async Task<IActionResult> Create([FromForm]CategoryCreateViewModel model)
+    //{
+    //    string imageName = string.Empty;
+    //    if (model.ImageFile != null)
+    //    {
+    //        imageName = Guid.NewGuid().ToString()+".jpg";
+    //        var dirImage =_configuration["ImageFolder"] ?? "uploading";
+    //        var fileSave = Path.Combine(Directory.GetCurrentDirectory(), dirImage, imageName);
+    //        using(var stream = new FileStream(fileSave, FileMode.Create))
+    //            await model.ImageFile.CopyToAsync(stream);
+    //    }
+    //    var entity = _mapper.Map<CategoryEntity>(model);
+    //    entity.Image = imageName;
+    //    _context.Categories.Add(entity);
+    //    _context.SaveChanges();
+    //    return Ok(entity);
+    //}
 }

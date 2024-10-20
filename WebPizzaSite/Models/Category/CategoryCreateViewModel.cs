@@ -14,5 +14,5 @@ public class CategoryCreateViewModel
     [Display(Name = "Оберіть фото")]
     [Required(ErrorMessage = "Оберіть фото категорії на ПК")]
     [DataType(DataType.Upload)]
-    public IFormFile? Image { get; set; }
+    public IFormFile? ImageFile { get; set; }
 }

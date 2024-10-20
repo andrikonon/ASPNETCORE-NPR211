@@ -144,7 +144,7 @@ namespace WebPizzaSite.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<string>("Image")
+                    b.Property<string>("ImageFile")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");

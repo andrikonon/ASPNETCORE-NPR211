@@ -45,9 +45,9 @@ public class MainController : Controller
         {
             var cat = _mapper.Map<CategoryEntity>(model);
 
-            if (model.Image != null && model.Image.Length > 0)
+            if (model.ImageFile != null && model.ImageFile.Length > 0)
             {
-                var extension = Path.GetExtension(model.Image.FileName);
+                var extension = Path.GetExtension(model.ImageFile.FileName);
                 string filename = $"{Guid.NewGuid()}{extension}";
                 var path = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", filename);
                 var dir = Path.GetDirectoryName(path);
@@ -57,7 +57,7 @@ public class MainController : Controller
                 }
                 using (var stream = new FileStream(path, FileMode.Create))
                 { 
-                    await model.Image.CopyToAsync(stream);
+                    await model.ImageFile.CopyToAsync(stream);
                 }
                 cat.Image = filename;
             }

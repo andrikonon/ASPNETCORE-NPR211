@@ -6,6 +6,7 @@ using WebPizzaSite.Data;
 using WebPizzaSite.Data.Entities;
 using WebPizzaSite.Data.Entities.Identity;
 using WebPizzaSite.Interfaces;
+using WebPizzaSite.Mapper;
 using WebPizzaSite.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +18,9 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddDbContext<PizzaDbContext>(opt => 
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddScoped<IImageHulk, ImageHulk>();
+
+builder.Services.AddAutoMapper(typeof(ApplicationMapperProfile));
 
 builder.Services.AddIdentity<UserEntity, RoleEntity>(options =>
     {
@@ -49,7 +53,11 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.AddAutoMapper(typeof(Program));
 
+builder.Services.AddCors();
+
 var app = builder.Build();
+
+app.UseCors(opt => opt.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin());
 
 using (var serviceScope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope())
 {
@@ -57,60 +65,54 @@ using (var serviceScope = app.Services.GetRequiredService<IServiceScopeFactory>(
     var userManager = serviceScope.ServiceProvider.GetService<UserManager<UserEntity>>();
     var roleManager = serviceScope.ServiceProvider.GetService<RoleManager<RoleEntity>>();
     var imageWorker = serviceScope.ServiceProvider.GetService<IImageWorker>();
+    var imageHulk = serviceScope.ServiceProvider.GetService<IImageHulk>();
     
     context?.Database.Migrate();
     
     if (!context.Categories.Any())
     {
-        var url = @"https://loremflickr.com/1200/800/tokio,cat/all";
-        var faker = new Faker("uk");
-        var categories = faker.Commerce.Categories(10);
-        foreach (var categoryName in categories)
+        int number = 10;
+        var list = new Faker("uk")
+            .Commerce.Categories(number);
+        foreach (var name in list)
         {
-            string fileName = imageWorker.ImageSave(url);
-            var entity = new CategoryEntity
+            var image = imageHulk.Save(@"https://picsum.photos/1200/800?category").Result;
+            var cat = new CategoryEntity
             {
-                Name = categoryName,
-                Description = faker.Lorem.Lines(5),
-                Image = fileName,
+                Name = name,
+                Description = new Faker("uk").Commerce.ProductDescription(),
+                Image = image,
             };
-            context.Categories.Add(entity);
+            context.Categories.Add(cat);
             context.SaveChanges();
         }
     }
 
     if (!context.Products.Any())
     {
-        string url = "htpps://loremflickr.com/1200/800/car/all";
-        var faker = new Faker("uk");
-    
-        var catCount = context.Categories.Count();
-        if (catCount != 0)
+        var categories = context.Categories.ToList();
+        var fakerProduct = new Faker<ProductEntity>("uk")
+            .RuleFor(u => u.Name, (f, u) => f.Commerce.Product())
+            .RuleFor(u => u.Price, (f, u) => decimal.Parse(f.Commerce.Price()))
+            .RuleFor(u => u.Category, (f, u) => f.PickRandom(categories));
+        string url = "https://picsum.photos/1200/800?product";
+        var products = fakerProduct.GenerateLazy(100);
+        Random r = new Random();
+        foreach (var product in products)
         {
-            var prodCount = faker.Random.Int(50, 100);
-            for (int i = 0; i < prodCount; i++)
+            context.Add(product);
+            context.SaveChanges();
+            int imageCount = r.Next(3, 5);
+            for (int i = 0; i < imageCount; i++)
             {
-                var catIds = context.Categories.Select(x => x.Id).ToList();
-                var catIndex = faker.Random.Number(0, catCount - 1);
-                var p = new ProductEntity
+                var imageName = imageHulk.Save(url).Result;
+                var imageProduct = new ProductImageEntity
                 {
-                    CategoryId = catIds[catIndex],
-                    Name = faker.Commerce.ProductName(),
-                    Price = decimal.Parse(faker.Commerce.Price()),
+                    Product = product,
+                    Name = imageName,
+                    Priority = i
                 };
-                context.Add(p);
-                int countImages = faker.Random.Number(3, 5);
-                for (int j = 0; j < countImages; j++)
-                {
-                    string fileName = imageWorker.ImageSave(url);
-                    var pi = new ProductImageEntity
-                    {
-                        Name = fileName,
-                        Priority = j,
-                        Product = p,
-                    };
-                    context.Add(pi);
-                }
+                context.Add(imageProduct);
                 context.SaveChanges();
             }
         }
